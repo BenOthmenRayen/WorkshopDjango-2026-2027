@@ -1,12 +1,27 @@
 from django.db import models
-# Create your models here.
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
+
+TYPES_VEHICULE = [
+    ('camionnette', 'Camionnette / utilitaire léger'),
+    ('fourgon', 'Fourgon'),
+    ('camion_porteur', 'Camion porteur'),
+    ('semi_remorque', 'Semi-remorque'),
+]
 class Vehicule(models.Model):
     immatriculation=models.CharField(max_length=15,unique=True)
-    type_vehicule=models.CharField(max_length=14,choices=[('camion','camion'),('fourgon','fourgon'),(('camion porteur','camion porteur')),('semi-remorque','semi-remorque')])
-    capacite_kg=models.PositiveIntegerField()
+    type_vehicule = models.CharField(max_length=14, choices=TYPES_VEHICULE)
+    capacite_kg=models.PositiveIntegerField(validators=[MinValueValidator(1,"une capacité nulle ne peut pas être acceptée")])
     disponibilite=models.BooleanField(default=True)
     entreprise=models.ForeignKey('EntrepriseApp.Entreprise',on_delete=models.CASCADE,related_name='vehicules')
-
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
+    
+    def accepte_poids(self, poids_kg):
+        mini, maxi = POIDS_PAR_TYPE[self.type_vehicule]
+        return mini <= poids_kg <= maxi
+    def clean(self):
+       super().clean()
+       if self.entreprise.type_entreprise != 'transporteur':
+           raise ValidationError("Le véhicule doit appartenir à une entreprise de type transporteur.")
