@@ -18,10 +18,12 @@ class Vehicule(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)
     
-    def accepte_poids(self, poids_kg):
-        mini, maxi = POIDS_PAR_TYPE[self.type_vehicule]
-        return mini <= poids_kg <= maxi
+    def __str__(self):
+        return f"{self.type_vehicule} ({self.immatriculation})"
     def clean(self):
-       super().clean()
-       if self.entreprise.type_entreprise != 'transporteur':
-           raise ValidationError("Le véhicule doit appartenir à une entreprise de type transporteur.")
+        super().clean()
+        if self.entreprise_id and self.entreprise.type_entreprise !='transporteur':
+            raise ValidationError("un véhicule ne peut être rattraché qu'a une entreprise de type transporteur")
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

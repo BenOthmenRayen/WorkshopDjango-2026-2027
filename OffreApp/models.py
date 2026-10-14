@@ -1,10 +1,19 @@
 
+from decimal import Decimal
+
 from django.db import models
 from EntrepriseApp.models import Entreprise
 from ExpeditionApp.models import Expedition
 from VehiculesApp.models import Vehicule
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
+
+PLAGES_POIDS_PAR_TYPE_VEHICULE = {
+    'camionnette': (Decimal(0), Decimal(1500)),
+    'fourgon': (Decimal(1500), Decimal(3500)),
+    'camion_porteur': (Decimal(3500), Decimal(19000)),
+    'semi_remorque': (Decimal(19000), Decimal(26000)),
+}
 class Offre(models.Model):
     STATUT_CHOICES = [
         ('proposee', 'Proposée'),
@@ -23,63 +32,78 @@ class Offre(models.Model):
     transporteur = models.ForeignKey(Entreprise, on_delete=models.CASCADE)
     """vehicule = models.ForeignKey(Vehicule, on_delete=models.CASCADE, null=True)"""
     vehicule = models.ForeignKey(Vehicule,on_delete=models.CASCADE)
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
+    def __str__(self):
+        return f"Offre de {self.transporteur.raison_sociale} sur {self.expedition.reference}"
     def clean(self):
         super().clean()
-        #Règle 1
+
+        
         if self.transporteur_id and self.transporteur.type_entreprise != 'transporteur':
             raise ValidationError({
-                'transporteur': "Seule une entreprise de type transporteur peut faire une offre."
-            })
-        #Règle 2
-        if self.vehicule_id and self.transporteur_id:
-            if self.vehicule.entreprise_id != self.transporteur_id:
-                raise ValidationError({
-                'vehicule': "Ce véhicule n'appartient pas au transporteur de l'offre."
-            })
-        #Règle 3
-        if self._state.adding and self.expedition_id:
-            if self.expedition.statut != 'publiee':
-                raise ValidationError({
-                'expedition': "Cette expédition n'accepte plus de nouvelles offres."
+                'transporteur': "Une offre ne peut être créée que par une entreprise de type transporteur."
             })
 
-        #Règle 4
-        if self.statut == 'proposee' and self.expedition_id and self.transporteur_id:
-            doublon = Offre.objects.filter(
-            expedition_id=self.expedition_id,
-            transporteur_id=self.transporteur_id,
-            statut='proposee',
-        ).exclude(pk=self.pk).exists()
-
-        if doublon:
-            raise ValidationError(
-                "Ce transporteur a déjà une offre active sur cette expédition."
-            )
-        #Règle 5
-        if self.statut == 'acceptee':
-            # 1. L'expédition devient attribuée
-            self.expedition.statut = 'attribuee'
-            self.expedition.save()
-
-            # 2. Les autres offres proposées deviennent refusées
-            for autre in Offre.objects.all():
-                if (autre.pk != self.pk
-                        and autre.expedition_id == self.expedition_id
-                        and autre.statut == 'proposee'):
-                    autre.statut = 'refusee'
-                    autre.save()
-        #Règle 6
-        if self.pk is None and self.vehicule_id:
-            if not self.vehicule.disponibilite:
-                raise ValidationError({
-                'vehicule': "Ce véhicule n'est pas disponible."
+        
+        if self.vehicule_id and self.transporteur_id and self.vehicule.entreprise_id != self.transporteur_id:
+            raise ValidationError({
+                'vehicule': "Le véhicule doit appartenir à l'entreprise transporteur de l'offre."
             })
-        #Règle 7
+
+        
+        if self.pk is None and self.expedition_id and self.expedition.statut != 'publiee':
+            raise ValidationError({
+                'expedition': "Cette expédition ne peut plus recevoir de nouvelles offres (statut différent de 'publiee')."
+            })
+
+        
+        if self.statut == 'proposee' and self.transporteur_id and self.expedition_id:
+            duplicate_exists = Offre.objects.filter(
+                transporteur_id=self.transporteur_id,
+                expedition_id=self.expedition_id,
+                statut='proposee',
+            ).exclude(pk=self.pk).exists()
+            if duplicate_exists:
+                raise ValidationError({
+                    'statut': "Cette entreprise a déjà une offre 'proposee' active sur cette expédition."
+                })
+
+        
+        if self.pk is None and self.vehicule_id and not self.vehicule.disponible:
+            raise ValidationError({
+                'vehicule': "Ce véhicule n'est pas disponible et ne peut pas être proposé sur une nouvelle offre."
+            })
+
+        
         if self.vehicule_id and self.expedition_id:
-            if not self.vehicule.accepte_poids(self.expedition.poids_kg):
-                raise ValidationError(
-                "Le type de véhicule n'est pas compatible avec le poids de l'expédition."
-            )
+            plage = PLAGES_POIDS_PAR_TYPE_VEHICULE.get(self.vehicule.type_vehicule)
+            poids_kg = self.expedition.poids_kg
+            if plage and not (plage[0] < poids_kg <= plage[1]):
+                raise ValidationError({
+                    'vehicule': (
+                        f"Le type de véhicule '{self.vehicule.type_vehicule}' n'est pas adapté "
+                        f"au poids de l'expédition ({poids_kg} kg)."
+                    )
+                })
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        previous_statut = None
+        if self.pk:
+            previous_statut = Offre.objects.filter(pk=self.pk).values_list('statut', flat=True).first()
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if self.statut == 'acceptee' and previous_statut != 'acceptee':
+                self._appliquer_cascade_acceptation()
+
+    def _appliquer_cascade_acceptation(self):
+        Expedition = apps.get_model('ExpeditionsApp', 'Expedition')
+        Expedition.objects.filter(pk=self.expedition_id).update(
+            statut='attribuee'
+        )
+        Offre.objects.filter(
+            expedition_id=self.expedition_id,
+            statut='proposee',
+        ).exclude(pk=self.pk).update(statut='refusee', updated_at=timezone.now())
+   
+
+    

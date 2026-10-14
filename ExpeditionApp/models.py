@@ -1,6 +1,7 @@
 from django.db import models
 from EntrepriseApp.models import Entreprise
 import django.utils.timezone as timezone
+from django.core.exceptions import ValidationError
 
 class Expedition(models.Model):
     reference=models.CharField(max_length=20,editable=False)
@@ -13,9 +14,16 @@ class Expedition(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     description=models.CharField(max_length=100)
     updated_at=models.DateTimeField(auto_now=True)
+    def clean(self):
+        super().clean()
+        if self.entreprise_id and self.entreprise.type_entreprise != 'chargeur':
+            raise ValidationError({
+                'entreprise': "Une expédition ne peut être créée que par une entreprise de type chargeur."
+            })
     def save(self, *args, **kwargs):
-        self.reference=self._generate_reference()
-        return super().save()
+            self.full_clean()  # Validate the model fields before saving
+            self.reference=self._generate_reference()
+            return super().save(*args, **kwargs)
     @classmethod
     def _generate_reference(cls):
         annee = timezone.now().strftime("%y")
@@ -25,4 +33,4 @@ class Expedition(models.Model):
         if compteur >9999:
             raise ValueError(f"Le compteur a dépassé la limite de 9999 par annee {annee}")
         return f"{prefixe}{compteur:05d}"
-
+    
