@@ -20,6 +20,13 @@ class OffreAdmin(admin.ModelAdmin):
    
     autocomplete_fields = ('expedition', 'transporteur', 'vehicule')
     readonly_fields = ('created_at', 'updated_at', 'date_proposition')
+
+    def get_readonly_fields(self, request, obj=None):
+        base = list(self.readonly_fields)
+        if obj and obj.statut == 'acceptee':
+            return base + ['prix', 'delai_jours']
+        return base
+
     @admin.display(description='Statut')
     def statut_colore(self, obj):
         couleurs = {
