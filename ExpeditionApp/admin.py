@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.utils.html import format_html
 from .models import Expedition
 # Register your models here.
 class EnRetardFilter(admin.SimpleListFilter):
@@ -19,7 +20,7 @@ class EnRetardFilter(admin.SimpleListFilter):
         return queryset
 @admin.register(Expedition) 
 class ExpeditionAdmin(admin.ModelAdmin):
-    list_display=('reference','ville_depart','ville_arrive','poid_kg','date_souhaitée','statut','entreprise')
+    list_display=('reference','ville_depart','ville_arrive','poid_kg','date_souhaitée','statut_colore','entreprise')
     list_filter=('statut','date_souhaitée',EnRetardFilter)
     search_fields=('reference','ville_depart','ville_arrive','entreprise__raison_sociale')
     readonly_fields=('reference',)
@@ -40,6 +41,22 @@ class ExpeditionAdmin(admin.ModelAdmin):
             )
     readonly_fields = ('created_at', 'updated_at')
     actions = ['make_it_delivered']
+
+    @admin.display(description='Statut', ordering='statut')
+    def statut_colore(self, obj):
+        couleurs = {
+            'publiee': '#5BC0DE',
+            'Attribue': '#337AB7',
+            'attribue': '#337AB7',
+            'en_cours': '#F0AD4E',
+            'livrée': '#5CB85C',
+            'Annulée': '#D9534F',
+        }
+        return format_html(
+            '<span style="color:white;background:{};padding:3px 8px;border-radius:4px;">{}</span>',
+            couleurs.get(obj.statut, '#999'), obj.get_statut_display(),
+        )
+
     @admin.action(description='Marquer comme livrée')
     def make_it_delivered(self, request, queryset):
         liste=queryset.filter(statut='en_cours')
