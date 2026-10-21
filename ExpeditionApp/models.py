@@ -9,7 +9,7 @@ class Expedition(models.Model):
     ville_arrive=models.CharField(max_length=20)
     date_souhaitée=models.DateTimeField()
     poid_kg=models.DecimalField(decimal_places=2,max_digits=10)
-    statut=models.CharField(max_length=10,choices=[('Publiée','publiée'),('Attribue','attribue'),('en_cours',"En_cours"),('livrée','Livrée'),('Annulée','annulée')],default='publiée')
+    statut=models.CharField(max_length=10,choices=[('publiee','publiee'),('Attribue','attribue'),('en_cours',"En_cours"),('livrée','Livrée'),('Annulée','annulée')],default='publiée')
     entreprise=models.ForeignKey(Entreprise, on_delete=models.CASCADE, related_name='expeditions')
     created_at=models.DateTimeField(auto_now_add=True)
     description=models.CharField(max_length=100)
@@ -22,7 +22,8 @@ class Expedition(models.Model):
             })
     def save(self, *args, **kwargs):
             self.full_clean()  # Validate the model fields before saving
-            self.reference=self._generate_reference()
+            if not self.pk:
+                self.reference=self._generate_reference()
             return super().save(*args, **kwargs)
     @classmethod
     def _generate_reference(cls):
