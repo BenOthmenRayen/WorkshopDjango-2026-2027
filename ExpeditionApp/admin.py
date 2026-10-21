@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.html import format_html
 from .models import Expedition
+from OffreApp.models import Offre
 # Register your models here.
 class EnRetardFilter(admin.SimpleListFilter):
     title = 'En retard'
@@ -18,6 +19,15 @@ class EnRetardFilter(admin.SimpleListFilter):
         elif self.value() == 'non':
             return queryset.filter(date_souhaitée__gte=timezone.now())
         return queryset
+
+class OffreInline(admin.StackedInline):
+    model = Offre
+    extra = 0
+    fk_name = 'expedition'
+    readonly_fields = ('transporteur', 'vehicule', 'prix', 'delai_jours', 'statut')
+    show_change_link = True
+    can_delete = False
+
 @admin.register(Expedition) 
 class ExpeditionAdmin(admin.ModelAdmin):
     list_display=('reference','ville_depart','ville_arrive','poid_kg','date_souhaitée','statut_colore','entreprise')
@@ -27,6 +37,7 @@ class ExpeditionAdmin(admin.ModelAdmin):
     ordering=('-created_at',)
     list_per_page=10
     date_hierarchy='created_at'
+    inlines = [OffreInline]
 
     fieldsets=(
                 ('informations', {
