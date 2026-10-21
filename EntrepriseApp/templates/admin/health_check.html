@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+  <p>Contrôles exécutés le {% now "d/m/Y à H:i" %}</p>
+
+  {% for c in controles %}
+  <div class="module" style="margin-bottom:24px;">
+    <h2>
+      {{ forloop.counter }}. {{ c.titre }} —
+      {% if c.lignes %}{{ c.lignes|length }} anomalie(s){% else %} OK{% endif %}
+    </h2>
+    <p style="padding:8px 12px;margin:0;"><em>{{ c.regle }}</em></p>
+    {% if c.lignes %}
+      <table style="width:100%;">
+        <tbody>
+          {% for ligne in c.lignes %}
+          <tr><td>{{ ligne }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding:8px 12px;">Aucune anomalie détectée.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

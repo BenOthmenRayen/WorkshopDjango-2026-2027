@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'chahd.sqlite3',
+        'NAME': BASE_DIR / 'rayen_benothmen.sqlite3',
     }
 }
 

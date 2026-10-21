@@ -1,0 +1,14 @@
+immatriculation,type_vehicule,capacite_kg,disponibilite,entreprise_matricule
+201 TU 1234,camionnette,1200,True,2103456AAM000
+198 TU 5678,fourgon,3200,True,2103456AAM000
+215 TU 9012,semi_remorque,25000,True,2103456AAM000
+190 TU 3456,camion_porteur,12000,True,2214567/M/A/M/000
+205 TU 7890,camionnette,1400,True,2214567/M/A/M/000
+176 TU 2345,camion_porteur,18000,False,2214567/M/A/M/000
+210 TU 6789,semi_remorque,24000,True,2325678-G-B-M-000
+188 TU 0123,fourgon,3500,True,2325678-G-B-M-000
+220 TU 4567,camion_porteur,9000,True,2436789NAM002
+182 TU 8901,camionnette,1000,True,2436789NAM002
+199 TU 3344,semi_remorque,26000,True,2436789NAM002
+207 TU 5566,fourgon,3000,True,2547890/R/D/P/000
+170 TU 7788,camionnette,1300,False,2547890/R/D/P/000
